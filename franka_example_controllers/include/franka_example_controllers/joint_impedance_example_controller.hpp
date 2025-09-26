@@ -51,7 +51,7 @@ class JointImpedanceExampleController : public controller_interface::ControllerI
   Vector7d k_gains_;
   Vector7d d_gains_;
 
-  Vector7d q_goals_;
+  Vector7d q_goal_;
   ros::Subscriber joint_cmd_sub_;
   std::mutex cmd_mutex_;
   
