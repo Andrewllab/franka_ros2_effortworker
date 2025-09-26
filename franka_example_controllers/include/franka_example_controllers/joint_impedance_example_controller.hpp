@@ -50,8 +50,14 @@ class JointImpedanceExampleController : public controller_interface::ControllerI
   Vector7d dq_filtered_;
   Vector7d k_gains_;
   Vector7d d_gains_;
-  double elapsed_time_{0.0};
+
+  Vector7d q_goals_;
+  ros::Subscriber joint_cmd_sub_;
+  std::mutex cmd_mutex_;
+  
   void updateJointStates();
+  void jointCmdCallback(const sensor_msgs::JointState::ConstPtr& msg);
+  
 };
 
 }  // namespace franka_example_controllers

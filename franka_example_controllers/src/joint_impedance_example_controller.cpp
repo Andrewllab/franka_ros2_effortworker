@@ -50,12 +50,22 @@ controller_interface::return_type JointImpedanceExampleController::update(
     const rclcpp::Time& /*time*/,
     const rclcpp::Duration& period) {
   updateJointStates();
-  Vector7d q_goal = initial_q_;
-  elapsed_time_ = elapsed_time_ + period.seconds();
+  // Vector7d q_goal = initial_q_;
+  // elapsed_time_ = elapsed_time_ + period.seconds();
 
-  double delta_angle = M_PI / 8.0 * (1 - std::cos(M_PI / 2.5 * elapsed_time_));
-  q_goal(3) += delta_angle;
-  q_goal(4) += delta_angle;
+  // double delta_angle = M_PI / 8.0 * (1 - std::cos(M_PI / 2.5 * elapsed_time_));
+  // q_goal(3) += delta_angle;
+  // q_goal(4) += delta_angle;
+
+  // double delta_angle = M_PI / 8.0 * (1 - std::cos(M_PI / 2.5 * elapsed_time_));
+  // q_goal(3) += delta_angle;
+  // q_goal(4) += delta_angle;
+
+  Vector7d q_goal;
+  {
+  std::lock_guard<std::mutex> lock(cmd_mutex_);
+  q_goal = q_goal_;  // copy safely
+  }
 
   const double kAlpha = 0.99;
   dq_filtered_ = (1 - kAlpha) * dq_filtered_ + kAlpha * dq_;
@@ -65,6 +75,17 @@ controller_interface::return_type JointImpedanceExampleController::update(
     command_interfaces_[i].set_value(tau_d_calculated(i));
   }
   return controller_interface::return_type::OK;
+}
+
+void JointImpedanceExampleController::jointCmdCallback(const sensor_msgs::JointState::ConstPtr& msg) {
+  if (msg->position.size() == 7) {
+    std::lock_guard<std::mutex> lock(cmd_mutex_);
+    for (size_t i = 0; i < 7; i++) {
+      q_goal_[i] = msg->position[i];
+    }
+  } else {
+    ROS_WARN_THROTTLE(1.0, "Received JointState with wrong size (expected 7). Ignoring.");
+  }
 }
 
 CallbackReturn JointImpedanceExampleController::on_init() {
@@ -122,6 +143,11 @@ CallbackReturn JointImpedanceExampleController::on_configure(
 
   arm_id_ = robot_utils::getRobotNameFromDescription(robot_description_, get_node()->get_logger());
 
+  joint_cmd_sub_ = node_handle.subscribe<sensor_msgs::JointState>(
+    "/factr_teleop/joint_cmd", 1,
+    &JointImpedanceExampleController::jointCmdCallback, this
+  );
+
   return CallbackReturn::SUCCESS;
 }
 
@@ -130,7 +156,7 @@ CallbackReturn JointImpedanceExampleController::on_activate(
   updateJointStates();
   dq_filtered_.setZero();
   initial_q_ = q_;
-  elapsed_time_ = 0.0;
+  q_goal_ = initial_q_;
 
   return CallbackReturn::SUCCESS;
 }
