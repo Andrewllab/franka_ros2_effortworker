@@ -77,14 +77,18 @@ controller_interface::return_type JointImpedanceExampleController::update(
   return controller_interface::return_type::OK;
 }
 
-void JointImpedanceExampleController::jointCmdCallback(const sensor_msgs::JointState::ConstPtr& msg) {
+void JointImpedanceExampleController::jointCmdCallback(const sensor_msgs::msg::JointState::SharedPtr msg) {
   if (msg->position.size() == 7) {
     std::lock_guard<std::mutex> lock(cmd_mutex_);
     for (size_t i = 0; i < 7; i++) {
       q_goal_[i] = msg->position[i];
     }
   } else {
-    ROS_WARN_THROTTLE(1.0, "Received JointState with wrong size (expected 7). Ignoring.");
+    RCLCPP_WARN_THROTTLE(
+        get_node()->get_logger(),
+        *get_node()->get_clock(),
+        1000,  // ms
+        "Received JointState with wrong size (expected 7). Ignoring.");
   }
 }
 
@@ -143,10 +147,10 @@ CallbackReturn JointImpedanceExampleController::on_configure(
 
   arm_id_ = robot_utils::getRobotNameFromDescription(robot_description_, get_node()->get_logger());
 
-  joint_cmd_sub_ = node_handle.subscribe<sensor_msgs::JointState>(
-    "/factr_teleop/joint_cmd", 1,
-    &JointImpedanceExampleController::jointCmdCallback, this
-  );
+  joint_cmd_sub_ = get_node()->create_subscription<sensor_msgs::msg::JointState>(
+    "/factr_teleop/joint_cmd",
+    10,  // QoS depth
+    std::bind(&JointImpedanceExampleController::jointCmdCallback, this, std::placeholders::_1));
 
   return CallbackReturn::SUCCESS;
 }

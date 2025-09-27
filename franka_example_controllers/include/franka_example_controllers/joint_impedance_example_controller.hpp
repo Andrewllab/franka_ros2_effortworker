@@ -52,11 +52,11 @@ class JointImpedanceExampleController : public controller_interface::ControllerI
   Vector7d d_gains_;
 
   Vector7d q_goal_;
-  ros::Subscriber joint_cmd_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_cmd_sub_;
   std::mutex cmd_mutex_;
   
   void updateJointStates();
-  void jointCmdCallback(const sensor_msgs::JointState::ConstPtr& msg);
+  void jointCmdCallback(const sensor_msgs::msg::JointState::SharedPtr msg);
   
 };
 
